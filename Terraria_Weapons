@@ -23,6 +23,9 @@ def get_weapon_info(wp):
     soup_wp = BeautifulSoup(response_weapon.text, "html.parser")
     weapon_info = soup_wp.findAll("table", attrs={"class": "stat"})
     weapon_type = soup_wp.findAll("span", attrs={"style": "font-weight:bold;"})
+    ingradients = soup_wp.findAll("td", attrs={"class": "ingredients"})
+    ingrediant_list = []
+
 
     for i in weapon_type:
         weapon_type = i.text[1:-1]
@@ -35,17 +38,35 @@ def get_weapon_info(wp):
     # end with 速度
     speed = speed[:speed.find("速度")+2]
 
-    ingradients = soup_wp.findAll("td", attrs={"class": "ingredients"})
-    ingrediant_list = []
     for ingradient in ingradients:
-        ingrediant_list.append(ingradient.text)
+        ingradient = ingradient.text
+        if ingradient != "":
+            if ingradient[-1] != ")":  # if the last char is not a number
+                ingradient = ingradient + "(1)"
+            ingrediant_list.append(ingradient)
 
     ingrediant_list = str(ingrediant_list)
     ingrediant_list = re.sub("[\[\],\"\' ]", "", ingrediant_list)
 
     if ingrediant_list == "":
-        ingrediant_list = "无法合成"
-
+        ingrediant_list = []
+        ingradients_2 = soup_wp.findAll("table", attrs={"class": "craftbox"})
+        for ingradient in ingradients_2:
+            ingradient= re.sub(f'[工作台数量材料制站产物/\\n]', '', ingradient.text)
+            ingradient = re.sub('铁砧+', '', ingradient)
+            ingradient = re.sub('铅砧+', '', ingradient)
+            ingradient = re.sub('秘银砧+', '', ingradient)
+            ingradient = re.sub('山铜砧+', '', ingradient)
+            ingradient = re.sub(f'{wp}1+', '', ingradient)
+            # add () on every integer
+            ingradient = re.sub('(\d+)', r'(\1)', ingradient)
+            if ingradient[-1] != ")":  # if the last char is not a number
+                ingradient = ingradient + "(1)"
+            ingrediant_list.append(ingradient)
+        ingrediant_list = str(ingrediant_list)
+        ingrediant_list = re.sub("[\[\],\"\' ]", "", ingrediant_list)
+        if ingrediant_list == "":
+            ingrediant_list = "无法合成"
 
     print("-------------------------")
 
