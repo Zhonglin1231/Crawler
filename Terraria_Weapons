@@ -1,0 +1,107 @@
+import requests
+import random
+import time
+from bs4 import BeautifulSoup
+import re
+
+
+def get_weapon_info(wp):
+    while True:
+        try:
+            response_weapon = requests.get(f"https://wiki.biligame.com/tr/{wp}", proxies={'http': random.choice(pro)},
+                                           headers=headers, timeout=5)
+            break
+        except requests.exceptions.ConnectionError:
+            print("RemoteDisconnected")
+            continue
+
+    if response.ok:
+        print("请求成功")
+    else:
+        print(response.status_code)
+
+    soup_wp = BeautifulSoup(response_weapon.text, "html.parser")
+    weapon_info = soup_wp.findAll("table", attrs={"class": "stat"})
+    weapon_type = soup_wp.findAll("span", attrs={"style": "font-weight:bold;"})
+
+    for i in weapon_type:
+        weapon_type = i.text[1:-1]
+
+    damage = str(weapon_info)[str(weapon_info).find("伤害")+11:str(weapon_info).find("伤害")+15]
+    # only take the number part of damage
+    damage = re.sub("\D", "", damage)
+
+    speed = str(weapon_info)[str(weapon_info).find("使用时间")+23:str(weapon_info).find("使用时间")+28]
+    # end with 速度
+    speed = speed[:speed.find("速度")+2]
+
+    ingradients = soup_wp.findAll("td", attrs={"class": "ingredients"})
+    ingrediant_list = []
+    for ingradient in ingradients:
+        ingrediant_list.append(ingradient.text)
+
+    ingrediant_list = str(ingrediant_list)
+    ingrediant_list = re.sub("[\[\],\"\' ]", "", ingrediant_list)
+
+    if ingrediant_list == "":
+        ingrediant_list = "无法合成"
+
+
+    print("-------------------------")
+
+
+    print(wp, damage, weapon_type, speed, ingrediant_list)
+    return damage, weapon_type, speed, ingrediant_list
+
+
+weapon_name = []
+weapon_damage = []
+weapon_type_list = []
+weapon_speed = []
+weapon_ingrediant = []
+
+pro = ['122.152.196.126', '114.215.174.227', '119.185.30.75']
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 "
+                  "Safari/537.36 Edg/114.0.1823.43"
+
+}
+
+page_num = 1
+url = f"https://wiki.biligame.com/tr/%E6%AD%A6%E5%99%A8"
+
+for flip in range(page_num):
+    response = requests.get(url, proxies={'http': random.choice(pro)}, headers=headers, timeout=5)
+
+    if response.ok:
+        print("请求成功")
+    else:
+        print(response.status_code)
+
+    # print(response.text)
+
+    # beautifulsoup 解析
+    soup = BeautifulSoup(response.text, "html.parser")
+    all_weapon_name = soup.findAll("span", attrs={"class": "i"})
+    all_weapon_list = str(all_weapon_name).split("title=\"")
+
+    count = 0
+    for weapons in all_weapon_list:
+        weapon = weapons[0:weapons.find("\"")]
+        if "电脑版" not in weapon and "主机版" not in weapon and "3DS版" not in weapon and count % 2 == 0:
+            if "页面不存在" in weapon:
+                weapon = weapon[0:weapon.find("(页面不存在)")]
+            weapon_name.append(weapon)
+            damage, weapon_type, speed, ingrediant_list = get_weapon_info(weapon)
+            weapon_damage.append(damage)
+            weapon_type_list.append(weapon_type)
+            weapon_speed.append(speed)
+            weapon_ingrediant.append(ingrediant_list)
+
+        count += 1
+
+with open("weapon.csv", "w", encoding="utf-8-sig") as f:
+    f.write("武器名,伤害,类型,攻速,配方\n")
+    for i in range(len(weapon_name)):
+        f.write(f"{weapon_name[i]},{weapon_damage[i]},{weapon_type_list[i]},{weapon_speed[i]},{weapon_ingrediant[i]}\n")
